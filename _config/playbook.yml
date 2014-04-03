@@ -1,0 +1,42 @@
+---
+- hosts: all
+  tasks:
+    - name: update apt cache
+      apt: update_cache=yes cache_valid_time=3600
+      sudo: yes
+    - name: upgrade the distro
+      apt: upgrade=yes
+      sudo: yes
+    - name: install packages
+      apt: pkg={{ item }} state=latest
+      sudo: yes
+      with_items:
+        - build-essential
+        - git
+        - python-dev
+        - python-pip
+        - supervisor
+        - libevent-dev # for bokeh
+        - redis-server # for bokeh
+        - libzmq-dev # for ipython
+    - name: configure supervisor
+      sudo: yes
+      copy: src=ipython_notebook.conf dest=/etc/supervisor/conf.d/ipython_notebook.conf owner=root mode=644
+      notify: restart ipython notebook
+    - name: install python packages
+      pip: name={{ item }} state=latest
+      sudo: yes
+      with_items:
+        - redis # for bokeh
+        - bokeh
+        - pyzmq # for ipython
+        - tornado # for ipython
+        - ipython
+      notify: restart ipython notebook
+  handlers:
+    - name: restart ipython notebook
+      sudo: yes
+      supervisorctl: name=ipython_notebook state=restarted
+
+# run ipython with
+# ipython notebook --ip=0.0.0.0
